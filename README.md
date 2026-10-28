@@ -2,6 +2,8 @@
 
 A complete browser mystery about shared memories, with a rainy 3D detective office, a collaborative corkboard, and a memory dossier to keep.
 
+[Play on GitHub Pages](https://efter-dash.github.io/memory-noir/) · [Play on the room-server host](https://memory-noir-case-of-us.iphtaar.chatgpt.site)
+
 ## Play
 
 Choose **Try the solo mystery** to play immediately. Inspect the six glowing objects, or use **Examine objects**. Pin clues, add theories, and connect two cards with red thread. When the evidence fits, submit who, what, and where.
@@ -12,7 +14,7 @@ The storyteller can flicker the lamp, send resonance pulses, and deliver two tel
 
 At the reveal, **Keep the memory dossier** downloads a PNG containing the story, proof, theories, and participants. Sound is opt-in.
 
-The hosted Site starts **owner-private**. Friends need Site access as well as a room code. This project does not silently change sharing permissions.
+The game is public. Friends can follow an invitation link and enter the four-character room code. Never use a game room to store sensitive information. Room codes are invitations, not passwords.
 
 ## Included
 
@@ -50,7 +52,7 @@ The API integration test requires a running local server and creates an isolated
 
 React + TypeScript, Three.js, Vinext/Vite, Cloudflare Workers, D1, Drizzle schema migrations. `/api/room` accepts bounded JSON commands with a per-tab random bearer token. The server checks roles, strips private truth and tokens from detective responses, and retries conflicting room updates. Player names and clues are rendered as text.
 
-The database stores one versioned JSON room record. Clients poll every 1.5 seconds while visible. Room codes locate a lobby; session tokens authorize a player's subsequent actions. Rooms become inaccessible after 24 hours; expiry is not physical deletion. This is a private first release, not a hardened public matchmaking service. Public hosting should add rate limits, record retention/cleanup, moderation, and room-code brute-force protection.
+The database stores one versioned JSON room record. Clients poll every 1.5 seconds while visible. Room codes locate a lobby; session tokens authorize a player's subsequent actions. Rooms become inaccessible after 24 hours; expiry is not physical deletion. Public room creation is limited to six attempts per minute and joins to thirty per minute per IP address. The service is intended for small friend groups, not large-scale public matchmaking. Room retention cleanup and abuse moderation remain future improvements.
 
 ## Deliberate differences from the concept
 
@@ -72,3 +74,11 @@ The database stores one versioned JSON room record. Clients poll every 1.5 secon
 - `tests/` — logic and multi-session integration tests
 
 No credentials belong in this repository. `.sites-runtime`, local databases, build output and dependencies are ignored.
+
+## GitHub Pages and Vercel
+
+The same React/Three.js game is built as a static client with `npm run build:web`. GitHub Actions tests and publishes `main` to GitHub Pages automatically. Vercel uses the root `vercel.json`. Both clients use the shared Cloudflare/D1 room server; GitHub Pages itself cannot run the room database.
+
+Set `VITE_ROOM_API` at build time to use your own compatible server. Set `PAGES_BASE=/repository-name/` when publishing under a GitHub project path. The default backend is the public Memory Noir Site. Cross-origin API requests use a per-tab bearer token, not browser cookies.
+
+The root `npm run build` still builds the full Cloudflare-hosted version. Changes to room-server code need a separate Sites deployment; a GitHub Pages or Vercel frontend deployment does not update that backend.

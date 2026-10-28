@@ -8,6 +8,13 @@
       "when": 1793211305754,
       "tag": "0000_daily_mad_thinker",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1793213239575,
+      "tag": "0001_groovy_may_parker",
+      "breakpoints": true
     }
   ]
 }

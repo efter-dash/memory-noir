@@ -1,9 +1,20 @@
 import { env } from 'cloudflare:workers';
 import { newRoom, publicRoom, apply, type Room } from '@/lib/game';
-const json=(data:any,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
+const json=(data:any,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, X-Room-Token'}});
+export async function OPTIONS(){return json({});}
 export async function POST(req:Request){try{
  const raw=await req.text();if(raw.length>12000)return json({error:'Request is too large.'},413);const b=JSON.parse(raw);const db=env.DB!;const action=b.action;const token=req.headers.get('X-Room-Token')||'';
  if(!/^[a-f0-9-]{36}$/.test(token))return json({error:'A valid session is required.'},401);
+ // Keep public room discovery bounded. Existing players use unguessable bearer tokens.
+ if(action==='create'||action==='join'){
+ const ip=req.headers.get('cf-connecting-ip')||'unknown';
+ const bucket=Math.floor(Date.now()/60000);
+ const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(ip+':'+bucket));
+ const key=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('')+':'+action;
+ const hit=await db.prepare('INSERT INTO request_limits (id,count,expires) VALUES (?,1,?) ON CONFLICT(id) DO UPDATE SET count=count+1 RETURNING count').bind(key,Date.now()+120000).first<{count:number}>();
+ if((hit?.count||0)>(action==='create'?6:30))return json({error:'Too many attempts. Please wait a minute and try again.'},429);
+ await db.prepare('DELETE FROM request_limits WHERE id IN (SELECT id FROM request_limits WHERE expires<? LIMIT 50)').bind(Date.now()).run();
+ }
  if(action==='create'){
  const name=String(b.name||'Detective').trim().slice(0,24);if(!b.demo&&(!b.truth?.trim()||!b.redHerring?.trim()||!b.smokingGun?.trim()))return json({error:'Fill in all three pieces of the memory.'},400);
  const input={...b,truth:String(b.truth||'').slice(0,800),redHerring:String(b.redHerring||'').slice(0,500),smokingGun:String(b.smokingGun||'').slice(0,500),archetype:String(b.archetype||'The case of us').slice(0,60)};
